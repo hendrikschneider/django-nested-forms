@@ -47,11 +47,11 @@ class NestMixin:
         self_valid = super(NestMixin, self).is_valid()
         return formsets_valid and self_valid
 
-    def validate_formsets(self):
+    def validate_formsets(self, formsets=None):
         '''Call is_valid() of each formset.
 
         Return True if all the formsets are valid, and False the otherwise.'''
-        return all(formset.is_valid() for formset in self.formsets.values())
+        return all(formset.is_valid() for formset in (formsets or self.formsets).values())
 
     def get_formset_kwargs(self, prefix): # pylint: disable=W0613, R0201
                                           # suppress unused arg and method
@@ -63,9 +63,10 @@ class NestMixin:
         parameters to formset instances.'''
         return {}
 
-    def _init_formsets(self):
+    def _init_formsets(self, formset_classes=None, formsets=None):
         '''instantiate every formset class'''
-        for prefix, formset in self.formset_classes.items():
+        formsets = formsets if formsets is not None else self.formsets
+        for prefix, formset in (formset_classes or self.formset_classes).items():
             formset_instance = formset(
                 data=self.data if self.is_bound else None,
                 **self.get_formset_kwargs(prefix)
@@ -77,7 +78,7 @@ class NestMixin:
 
             # store each formset instance in a dict,
             # mapping prefixes to instances
-            self.formsets[prefix] = formset_instance
+            formsets[prefix] = formset_instance
 
 
 class ModelNestMixin(NestMixin):
@@ -97,9 +98,9 @@ class ModelNestMixin(NestMixin):
 
         return saved_instance
 
-    def save_formsets(self, commit):
+    def save_formsets(self, commit, formsets=None):
         '''Call save() of each formset.'''
-        for formset in self.formsets.values():
+        for formset in (formsets or self.formsets).values():
             formset.save(commit)
 
 class InlineNestMixin(ModelNestMixin):
