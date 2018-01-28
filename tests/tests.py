@@ -3,24 +3,26 @@
 from django import forms
 from django.test import TestCase
 
-from nested_forms.forms import NestedFormsets, NestedModelFormsets, NestedInlineFormsets
+from nested_forms import nest, FormSetHandler, ModelFormSetHandler, InlineFormSetHandler
 
 from tests.models import SampleChildModel, SampleRelatedModel, SampleParentModel
 
+# Suppress warnings for dynamic attributes
+# pylint:disable=E1101
 
 class SampleChildForm(forms.Form):
 
     sample_field = forms.CharField(max_length=8)
 
 
-class BaseMixinTest(TestCase):
+class FormSetHandlerTest(TestCase):
 
-    '''Test cases for NestMixin and its subclasses'''
+    '''Test cases for FormSetHandler and its subclasses'''
 
     FormsetClass = forms.formset_factory(SampleChildForm)
 
-    class ParentFormClass(NestedFormsets(child=FormsetClass).as_mixin(), # type: ignore
-                          forms.Form):
+    @nest(FormsetClass, 'child', FormSetHandler)
+    class ParentFormClass(forms.Form):
         sample_field = forms.CharField(max_length=8)
 
 
@@ -98,17 +100,17 @@ class BaseMixinTest(TestCase):
         self.assertEqual(childB[0].prefix, 'parent-child-0')
 
 
-class ModelMixinTest(BaseMixinTest):
+class ModelFormSetHandlerTest(FormSetHandlerTest):
 
-    '''Test cases for ModelMixin.'''
+    '''Test cases for ModelFormSetHandler and its subclasses'''
 
     FormsetClass = forms.modelformset_factory(
         model=SampleChildModel,
         fields=['sample_field']
     )
 
-    class ParentFormClass(NestedModelFormsets(child=FormsetClass).as_mixin(), # type: ignore
-                          forms.ModelForm):
+    @nest(FormsetClass, 'child', ModelFormSetHandler)
+    class ParentFormClass(forms.ModelForm):
 
         class Meta:
             model = SampleParentModel
@@ -144,9 +146,9 @@ class ModelMixinTest(BaseMixinTest):
             'eggs'
         )
 
-class InlineMixinTest(ModelMixinTest):
+class InlineFormSetHandlerTest(ModelFormSetHandlerTest):
 
-    '''Test cases for InlineMixin.'''
+    '''Test cases for InlineFormSetHandler.'''
 
 
     FormsetClass = forms.inlineformset_factory(
@@ -155,8 +157,8 @@ class InlineMixinTest(ModelMixinTest):
         fields=['sample_field']
     )
 
-    class ParentFormClass(NestedInlineFormsets(child=FormsetClass).as_mixin(), # type:ignore
-                          forms.ModelForm):
+    @nest(FormsetClass, 'child', InlineFormSetHandler)
+    class ParentFormClass(forms.ModelForm):
 
         class Meta:
             model = SampleParentModel
