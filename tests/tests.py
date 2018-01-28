@@ -1,66 +1,34 @@
-'''Tests mixins.'''
+'''Tests mixin factories.'''
 
 from django import forms
 from django.test import TestCase
 
-from nested_forms.forms import NestMixin, ModelNestMixin, InlineNestMixin
+from nested_forms.forms import NestedFormsets, NestedModelFormsets, NestedInlineFormsets
 
 from tests.models import SampleChildModel, SampleRelatedModel, SampleParentModel
 
-# Form and form sets
+
 class SampleChildForm(forms.Form):
+
     sample_field = forms.CharField(max_length=8)
-
-SampleChildFormSet = forms.formset_factory(SampleChildForm)
-
-class SampleParentForm(NestMixin,
-                       forms.Form):
-
-    formset_classes = {'child': SampleChildFormSet}
-    sample_field = forms.CharField(max_length=8)
-
-SampleModelChildFormSet = forms.modelformset_factory(
-    model=SampleChildModel,
-    fields=['sample_field']
-)
-
-class SampleModelParentForm(ModelNestMixin,
-                            forms.ModelForm):
-
-    formset_classes = {'child': SampleModelChildFormSet}
-
-    class Meta:
-        model = SampleParentModel
-        fields = ['sample_field']
-
-SampleInlineChildFormSet = forms.inlineformset_factory(
-    parent_model=SampleParentModel,
-    model=SampleRelatedModel,
-    fields=['sample_field']
-)
-
-class SampleInlineParentForm(InlineNestMixin,
-                            forms.ModelForm):
-
-    formset_classes = {'child': SampleInlineChildFormSet}
-
-    class Meta:
-        model = SampleParentModel
-        fields = ['sample_field']
 
 
 class BaseMixinTest(TestCase):
 
     '''Test cases for NestMixin and its subclasses'''
 
-    parent_form_class = SampleParentForm
-    formset_class = SampleChildFormSet
+    FormsetClass = forms.formset_factory(SampleChildForm)
+
+    class ParentFormClass(NestedFormsets(child=FormsetClass).as_mixin(), # type: ignore
+                          forms.Form):
+        sample_field = forms.CharField(max_length=8)
+
 
     def test_init_without_data(self):
         '''Child formsets are init()ed as their parents are init()ed.'''
-        parent = self.parent_form_class()
+        parent = self.ParentFormClass()
         child = parent.formsets.get('child')
-        self.assertIsInstance(child, self.formset_class)
+        self.assertIsInstance(child, self.FormsetClass)
 
     def test_init_with_data(self):
         data = {
@@ -71,7 +39,7 @@ class BaseMixinTest(TestCase):
             'child-MAX_NUM_FORMS': 1000,
             'child-0-sample_field': 'eggs',
         }
-        parent = self.parent_form_class(data)
+        parent = self.ParentFormClass(data)
         child = parent.formsets['child']
 
         self.assertEqual(parent['sample_field'].data, 'spam')
@@ -86,7 +54,7 @@ class BaseMixinTest(TestCase):
             'child-MAX_NUM_FORMS': 1000,
             'child-0-sample_field': 'eggs',
         }
-        parent = self.parent_form_class(data)
+        parent = self.ParentFormClass(data)
         child = parent.formsets['child']
 
         self.assertTrue(parent.is_valid())
@@ -101,7 +69,7 @@ class BaseMixinTest(TestCase):
             'child-MAX_NUM_FORMS': 1000,
             'child-0-sample_field': 'eggs',
         }
-        parent = self.parent_form_class(data)
+        parent = self.ParentFormClass(data)
         child = parent.formsets['child']
 
         self.assertFalse(parent.is_valid())
@@ -115,17 +83,17 @@ class BaseMixinTest(TestCase):
             'child-MAX_NUM_FORMS': 1000,
             'child-0-sample_field': 'This string exceeds the max length for this field.',
         }
-        parent = self.parent_form_class(data)
+        parent = self.ParentFormClass(data)
         child = parent.formsets['child']
         self.assertFalse(parent.is_valid())
 
     def test_prefix(self):
         '''Fields in child formsets have prefix'''
-        parentA = self.parent_form_class()
+        parentA = self.ParentFormClass()
         childA = parentA.formsets.get('child')
         self.assertEqual(childA[0].prefix, 'child-0')
 
-        parentB = self.parent_form_class(prefix='parent')
+        parentB = self.ParentFormClass(prefix='parent')
         childB = parentB.formsets.get('child')
         self.assertEqual(childB[0].prefix, 'parent-child-0')
 
@@ -134,13 +102,23 @@ class ModelMixinTest(BaseMixinTest):
 
     '''Test cases for ModelMixin.'''
 
-    parent_form_class = SampleModelParentForm
-    formset_class = SampleModelChildFormSet
+    FormsetClass = forms.modelformset_factory(
+        model=SampleChildModel,
+        fields=['sample_field']
+    )
+
+    class ParentFormClass(NestedModelFormsets(child=FormsetClass).as_mixin(), # type: ignore
+                          forms.ModelForm):
+
+        class Meta:
+            model = SampleParentModel
+            fields = ['sample_field']
+
 
     def test_save(self):
         '''Models for both parent and child forms are created.'''
-        parent_model_class = self.parent_form_class._meta.model
-        child_model_class = self.formset_class.model
+        parent_model_class = self.ParentFormClass._meta.model
+        child_model_class = self.FormsetClass.model
 
         data = {
             'sample_field': 'spam',
@@ -150,7 +128,7 @@ class ModelMixinTest(BaseMixinTest):
             'child-MAX_NUM_FORMS': 1000,
             'child-0-sample_field': 'eggs',
         }
-        parent = self.parent_form_class(data)
+        parent = self.ParentFormClass(data)
         parent.is_valid()
         parent.save()
 
@@ -170,13 +148,25 @@ class InlineMixinTest(ModelMixinTest):
 
     '''Test cases for InlineMixin.'''
 
-    parent_form_class = SampleInlineParentForm
-    formset_class = SampleInlineChildFormSet
+
+    FormsetClass = forms.inlineformset_factory(
+        parent_model=SampleParentModel,
+        model=SampleRelatedModel,
+        fields=['sample_field']
+    )
+
+    class ParentFormClass(NestedInlineFormsets(child=FormsetClass).as_mixin(), # type:ignore
+                          forms.ModelForm):
+
+        class Meta:
+            model = SampleParentModel
+            fields = ['sample_field']
+
 
     def test_relation(self):
         '''Child model instances are created with the reference to the parents.'''
-        parent_model_class = self.parent_form_class._meta.model
-        child_model_class = self.formset_class.model
+        parent_model_class = self.ParentFormClass._meta.model
+        child_model_class = self.FormsetClass.model
 
         data = {
             'sample_field': 'spam',
@@ -186,7 +176,7 @@ class InlineMixinTest(ModelMixinTest):
             'child-MAX_NUM_FORMS': 1000,
             'child-0-sample_field': 'eggs',
         }
-        parent = self.parent_form_class(data)
+        parent = self.ParentFormClass(data)
         parent.is_valid()
         parent.save()
 
