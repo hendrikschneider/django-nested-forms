@@ -3,7 +3,9 @@
 # a method named wrap_foo would be used by nest()
 # to wrap a method named foo in form class.
 
-class FormSetHandler:
+from .decorators import ExtraTaskAttacher
+
+class FormSetHandler(ExtraTaskAttacher):
 
     '''Wraps Form to make it operate in conjunction with FormSet.'''
 

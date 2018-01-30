@@ -1,35 +1,35 @@
 '''Helper functions to wrap methods of a Form with
 the corresponding methods of the Form's handler.'''
 
-WRAPPER_PREFIX = 'wrap_'
-LEN_WRAPPER_PREFIX = len(WRAPPER_PREFIX)
+class ExtraTaskAttacher:
 
-def nest(formset_class, prefix, handler_class):
-    '''Return a decorator to nest a formset in a form.'''
+    '''Decorator factory to insert extra tasks before and after method calls.'''
 
-    def decorate_class(form_class):
-        handler = handler_class(formset_class, prefix)
-        for handler_attr_name in dir(handler):
-            if not handler_attr_name.startswith(WRAPPER_PREFIX):
+    wrapper_prefix = 'wrap_'
+    len_wrapper_prefix = len(wrapper_prefix)
+
+    def __call__(self, wrapped_class):
+        '''Wrap methods in wrapped_class with corresponding wrapper in self.'''
+        for self_attr_name in dir(self):
+            if not self_attr_name.startswith(self.wrapper_prefix):
                 continue
-            form_attr_name = handler_attr_name[LEN_WRAPPER_PREFIX:]
+            wrapped_attr_name = self_attr_name[self.len_wrapper_prefix:]
             try:
-                to_be_wrapped = getattr(form_class, form_attr_name)
+                to_be_wrapped = getattr(wrapped_class, wrapped_attr_name)
             except AttributeError:
                 raise AssertionError(
-                    'Tried to _ `{form}.{wrapped}` because the handler `{handler}` ' \
+                    'Tried to wrap `{form}.{wrapped}` because the handler `{handler}` ' \
                     'has `{wrapper}`, but `{form}.{wrapped}` was not found.'.format(
-                        form=form_class.__qualname__,
-                        handler=handler_class.__qualname__,
-                        wrapped=form_attr_name,
-                        wrapper=handler_attr_name,
+                        form=wrapped_class.__qualname__,
+                        handler=self.__class__.__qualname__,
+                        wrapped=wrapped_attr_name,
+                        wrapper=self_attr_name,
                     )
                 )
-            decorated = _wrap(to_be_wrapped, getattr(handler, handler_attr_name))
-            setattr(form_class, form_attr_name, decorated)
-        return form_class
+            decorated = _wrap(to_be_wrapped, getattr(self, self_attr_name))
+            setattr(wrapped_class, wrapped_attr_name, decorated)
+        return wrapped_class
 
-    return decorate_class
 
 def _wrap(main_func, wrapper_func):
     '''Ensure `main_func` to do extra tasks before and after it is called.

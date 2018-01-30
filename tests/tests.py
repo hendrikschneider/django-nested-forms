@@ -3,7 +3,7 @@
 from django import forms
 from django.test import TestCase
 
-from nested_forms import nest, FormSetHandler, ModelFormSetHandler, InlineFormSetHandler
+from nested_forms import FormSetHandler, ModelFormSetHandler, InlineFormSetHandler
 
 from tests.models import SampleChildModel, SampleRelatedModel, SampleParentModel
 
@@ -21,7 +21,7 @@ class FormSetHandlerTest(TestCase):
 
     FormsetClass = forms.formset_factory(SampleChildForm)
 
-    @nest(FormsetClass, 'child', FormSetHandler)
+    @FormSetHandler(FormsetClass, 'child')
     class ParentFormClass(forms.Form):
         sample_field = forms.CharField(max_length=8)
 
@@ -109,7 +109,7 @@ class ModelFormSetHandlerTest(FormSetHandlerTest):
         fields=['sample_field']
     )
 
-    @nest(FormsetClass, 'child', ModelFormSetHandler)
+    @ModelFormSetHandler(FormsetClass, 'child')
     class ParentFormClass(forms.ModelForm):
 
         class Meta:
@@ -157,7 +157,7 @@ class InlineFormSetHandlerTest(ModelFormSetHandlerTest):
         fields=['sample_field']
     )
 
-    @nest(FormsetClass, 'child', InlineFormSetHandler)
+    @InlineFormSetHandler(FormsetClass, 'child')
     class ParentFormClass(forms.ModelForm):
 
         class Meta:
