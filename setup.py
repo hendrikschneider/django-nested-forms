@@ -11,7 +11,7 @@ setup(
     name='django-nested-forms',
     version='0.1.0',
     description='A util to make Django formsets easy to use.',
-    py_modules=['nested_forms.forms'],
+    py_modules=['nested_forms.handlers'],
     install_requires=['django >= 1.5, <2'],
     test_suite='run_tests.py',
 )
