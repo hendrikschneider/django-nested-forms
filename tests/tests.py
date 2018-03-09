@@ -2,6 +2,7 @@
 
 from django import forms
 from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from nested_forms import FormSetHandler, ModelFormSetHandler, InlineFormSetHandler
 
@@ -13,6 +14,11 @@ from tests.models import SampleChildModel, SampleRelatedModel, SampleParentModel
 class SampleChildForm(forms.Form):
 
     sample_field = forms.CharField(max_length=8)
+
+
+class SampleChildFormWithFile(forms.Form):
+
+    file_field = forms.FileField()
 
 
 class FormSetHandlerTest(TestCase):
@@ -183,3 +189,31 @@ class InlineFormSetHandlerTest(ModelFormSetHandlerTest):
         parent.save()
 
         self.assertEqual(child_model_class.objects.get(pk=1).parent_id, 1)
+
+
+class FileTest(TestCase):
+
+    FormsetClass = forms.formset_factory(SampleChildFormWithFile)
+
+    @FormSetHandler(FormsetClass, 'child')
+    class ParentFormClass(forms.Form):
+        sample_field = forms.CharField(max_length=8)
+
+    def test_file_upload(self):
+        '''A file can be passed to the child formset via its parent.'''
+        uploadedfile = SimpleUploadedFile('eggs.txt', b'yolk and white')
+
+        data = {
+            'sample_field': 'spam',
+            'child-TOTAL_FORMS': 1,
+            'child-INITIAL_FORMS': 0,
+            'child-MIN_NUM_FORMS': 0,
+            'child-MAX_NUM_FORMS': 1000,
+        }
+        files = {
+            'child-0-file_field': uploadedfile,
+        }
+
+        parent = self.ParentFormClass(data, files)
+        child = parent.formsets['child']
+        self.assertEqual(child[0]['file_field'].data, uploadedfile)

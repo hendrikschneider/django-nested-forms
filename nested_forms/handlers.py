@@ -45,6 +45,7 @@ class FormSetHandler(ExtraTaskAttacher):
 
         formset_instance = self.formset_class(
             data=form_instance.data if form_instance.is_bound else None,
+            files=form_instance.files if form_instance.is_bound else None,
             **self.get_formset_kwargs(form_instance)
         )
 
