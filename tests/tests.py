@@ -105,6 +105,48 @@ class FormSetHandlerTest(TestCase):
         childB = parentB.formsets.get('child')
         self.assertEqual(childB[0].prefix, 'parent-child-0')
 
+    def test_nothing_has_changed(self):
+        '''form.has_changed() returns false when neither of the
+        form and the nested formsets have changed.'''
+        data = {
+            'sample_field': '',
+            'child-TOTAL_FORMS': 1,
+            'child-INITIAL_FORMS': 0,
+            'child-MIN_NUM_FORMS': 0,
+            'child-MAX_NUM_FORMS': 1000,
+            'child-0-sample_field': '',
+        }
+        parent = self.ParentFormClass(data)
+        self.assertFalse(parent.has_changed())
+
+    def test_form_has_changed(self):
+        '''form.has_changed() returns true when the
+        form has changed.'''
+        data = {
+            'sample_field': 'spam', # this field has changed.
+            'child-TOTAL_FORMS': 1,
+            'child-INITIAL_FORMS': 0,
+            'child-MIN_NUM_FORMS': 0,
+            'child-MAX_NUM_FORMS': 1000,
+            'child-0-sample_field': '',
+        }
+        parent = self.ParentFormClass(data)
+        self.assertTrue(parent.has_changed())
+
+    def test_formset_has_changed(self):
+        '''form.has_changed() returns true when the
+        formset has changed.'''
+        data = {
+            'sample_field': '',
+            'child-TOTAL_FORMS': 1,
+            'child-INITIAL_FORMS': 0,
+            'child-MIN_NUM_FORMS': 0,
+            'child-MAX_NUM_FORMS': 1000,
+            'child-0-sample_field': 'spam', # this field has changed.
+        }
+        parent = self.ParentFormClass(data)
+        self.assertTrue(parent.has_changed())
+
 
 class ModelFormSetHandlerTest(FormSetHandlerTest):
 

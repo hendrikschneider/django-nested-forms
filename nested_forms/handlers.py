@@ -23,6 +23,11 @@ class FormSetHandler(ExtraTaskAttacher):
         form_valid = yield
         return form_valid and self.validate_formset(form_instance)
 
+    def wrap_has_changed(self, form_instance):
+        form_has_changed = yield
+        formset_has_changed = form_instance.formsets[self.prefix].has_changed()
+        return form_has_changed or formset_has_changed
+
     def validate_formset(self, form_instance):
         '''Call is_valid() of formset instance'''
         return form_instance.formsets[self.prefix].is_valid()
